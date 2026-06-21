@@ -619,11 +619,12 @@ function showPop(e, idx) {
     if (!co) return;
     document.getElementById('popCo').textContent   = co.name;
     document.getElementById('popBody').textContent = co.business;
+    // position:fixed is viewport-relative — never add scroll offsets
     const rect = btn.getBoundingClientRect();
-    let left = rect.left + window.scrollX;
-    let top  = rect.bottom + window.scrollY + 8;
+    let left = rect.left;
+    let top  = rect.bottom + 8;
     if (left + 360 > window.innerWidth - 20) left = window.innerWidth - 380;
-    if (top + 220 > window.scrollY + window.innerHeight - 20) top = rect.top + window.scrollY - 228;
+    if (top + 220 > window.innerHeight - 20) top = rect.top - 228;
     popover.style.left = left + 'px';
     popover.style.top  = top  + 'px';
     popover.classList.add('visible');
