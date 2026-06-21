@@ -353,22 +353,8 @@ async function loadPortfolio() {
     const sheet    = workbook.Sheets[workbook.SheetNames[0]];
     const rows     = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
-    // DEBUG -- open Safari Web Inspector > Console tab to see these
-    console.log('[debug] rows parsed:', rows.length);
-    if (rows.length > 0) {
-      console.log('[debug] column keys:', JSON.stringify(Object.keys(rows[0])));
-      console.log('[debug] row[0] Business value:', rows[0]['Business']);
-      console.log('[debug] row[0] full:', JSON.stringify(rows[0]));
-    }
-
     PORTFOLIO = parsePortfolio(rows);
     order     = PORTFOLIO.map((_, i) => i);
-
-    // DEBUG -- check first company after parsing
-    if (PORTFOLIO.length > 0) {
-      console.log('[debug] first company name:', PORTFOLIO[0].name);
-      console.log('[debug] first company business:', PORTFOLIO[0].business);
-    }
 
     // Update header stats
     const totalRounds = PORTFOLIO.reduce((a, c) => a + c.rounds.length, 0);
@@ -625,11 +611,15 @@ let hideTimer  = null;
 
 function showPop(e, idx) {
   clearTimeout(hideTimer);
+  // Capture the button element NOW — e.currentTarget becomes null
+  // inside setTimeout in Safari (event object is cleared after handler returns)
+  const btn = e.currentTarget;
   popTimer = setTimeout(() => {
     const co = PORTFOLIO[idx];
+    if (!co) return;
     document.getElementById('popCo').textContent   = co.name;
     document.getElementById('popBody').textContent = co.business;
-    const rect = e.currentTarget.getBoundingClientRect();
+    const rect = btn.getBoundingClientRect();
     let left = rect.left + window.scrollX;
     let top  = rect.bottom + window.scrollY + 8;
     if (left + 360 > window.innerWidth - 20) left = window.innerWidth - 380;
