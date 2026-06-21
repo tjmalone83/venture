@@ -351,7 +351,7 @@ async function loadPortfolio() {
     // Parse the base64 Excel using SheetJS
     const workbook = XLSX.read(json.file, { type: 'base64' });
     const sheet    = workbook.Sheets[workbook.SheetNames[0]];
-    const rows     = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    const rows     = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
     PORTFOLIO = parsePortfolio(rows);
     order     = PORTFOLIO.map((_, i) => i);
@@ -394,18 +394,30 @@ function showState(state, msg, detail) {
    • Last round per company is flagged isLatest.
 ══════════════════════════════════════════════════════════════ */
 function parsePortfolio(rows) {
+  // rows is now an array of objects keyed by column header name
+  // e.g. { Company: 'OpenAI', Entry: '', Month: 'Dec', Year: 2015, ... Business: 'OpenAI was...' }
+  // This is more robust than positional array access — immune to column order changes.
   const companies = [];
   let current = null;
 
-  for (let i = 1; i < rows.length; i++) {
-    const [company, entry, month, year, series, raised, valuation, notes, business] = rows[i];
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
 
-    if (company && String(company).trim()) {
-      const name = String(company).trim();
+    const company   = String(row['Company']   || '').trim();
+    const entry     = String(row['Entry']     || '').trim();
+    const month     = String(row['Month']     || '').trim();
+    const year      = String(row['Year']      || '').trim();
+    const series    = String(row['Series']    || '').trim();
+    const raised    = String(row['Raised']    || '').trim();
+    const valuation = String(row['Valuation'] || '').trim();
+    const notes     = String(row['Notes']     || '').trim();
+    const business  = String(row['Business']  || '').trim();
+
+    if (company) {
       current = {
-        name,
-        business:    business ? String(business).trim() : '',
-        sector:      SECTOR_MAP[name] || 'ai',
+        name:        company,
+        business,
+        sector:      SECTOR_MAP[company] || 'ai',
         entryRound:  null,
         entryVal:    null,
         latestRound: null,
@@ -420,18 +432,15 @@ function parsePortfolio(rows) {
     const hasData = series || raised || valuation || notes;
     if (!hasData) continue;
 
-    const isEntry = String(entry || '').trim() === '>>';
-    const dateStr = [month, year]
-      .map(v => String(v || '').trim())
-      .filter(Boolean)
-      .join(' ');
+    const isEntry = entry === '>>';
+    const dateStr = [month, year].filter(Boolean).join(' ');
 
     const round = {
       date:     dateStr,
-      series:   series    ? String(series).trim()             : '',
-      raised:   raised    ? '$' + String(raised).trim()       : '',
-      val:      valuation ? '$' + String(valuation).trim()    : '',
-      inv:      notes     ? String(notes).trim()              : '',
+      series,
+      raised:   raised    ? '$' + raised    : '',
+      val:      valuation ? '$' + valuation : '',
+      inv:      notes,
       isEntry,
       isLatest: false
     };
@@ -444,7 +453,7 @@ function parsePortfolio(rows) {
     }
   }
 
-  // Mark last round as latest
+  // Mark last round of each company as latest
   companies.forEach(co => {
     if (co.rounds.length > 0) {
       const last     = co.rounds[co.rounds.length - 1];
