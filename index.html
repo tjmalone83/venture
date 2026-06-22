@@ -118,7 +118,7 @@ main{max-width:1280px;margin:0 auto;padding:16px 36px 80px;}
 .card-header:hover{background:var(--surface-2);}
 .drag-handle{color:var(--text-4);font-size:13px;cursor:grab;padding:0 2px;transition:color .15s;flex-shrink:0;}
 .drag-handle:hover{color:var(--gold);}
-.co-logo{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700;font-size:14px;font-family:'Inter',sans-serif;color:#fff;border:1px solid rgba(0,0,0,.08);}
+.co-logo{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:1px solid var(--border);background:var(--surface);transition:background .2s;}.co-logo img{width:26px;height:26px;object-fit:contain;display:block;}.co-logo .logo-init{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;font-family:'Inter',sans-serif;color:#fff;}
 .co-identity{min-width:0;}
 .co-name-row{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;}
 .co-name{font-family:'Cormorant Garamond',Georgia,serif;font-size:17px;font-weight:600;color:var(--text-1);white-space:nowrap;letter-spacing:.01em;line-height:1.2;transition:color .3s;}
@@ -256,6 +256,7 @@ main{max-width:1280px;margin:0 auto;padding:16px 36px 80px;}
     <div class="leg-item"><div class="leg-swatch green"></div>Most recent round</div>
     <div class="leg-item"><div class="leg-swatch gray"></div>Prior round</div>
     <div class="foot-hint">Hover <em>i</em> for business description · Drag cards to reorder in Custom mode</div>
+    <a href="https://logo.dev" target="_blank" rel="noopener" style="font-size:10px;color:var(--text-4);text-decoration:none;margin-left:16px;flex-shrink:0;white-space:nowrap;transition:color .15s;" onmouseover="this.style.color='var(--text-3)'" onmouseout="this.style.color='var(--text-4)'">Logos by Logo.dev</a>
   </div>
 </main>
 
@@ -301,6 +302,24 @@ const LOGO_COLORS = {
   "Stripe":     "#635BFF",
   "Kalshi":     "#1A8040",
   "Zipline":    "#C84020"
+};
+
+// Logo.dev domains — free public CDN, 500k req/month
+// Token is publishable (safe client-side). Falls back to styled initial if logo unavailable.
+const LOGO_TOKEN = 'pk_DIvtE6zeTZuLUpNZ7BaqMQ';
+const LOGO_DOMAINS = {
+  "OpenAI":     "openai.com",
+  "Cursor":     "cursor.com",
+  "Rain":       "rain.xyz",
+  "Long Lake":  "longlake.com",
+  "Nexthop":    "nexthop.ai",
+  "Saronic":    "saronic.com",
+  "Parloa":     "parloa.com",
+  "Sierra":     "sierra.ai",
+  "Anduril":    "anduril.com",
+  "Stripe":     "stripe.com",
+  "Kalshi":     "kalshi.com",
+  "Zipline":    "flyzipline.com"
 };
 
 const SECTOR_META = {
@@ -498,6 +517,20 @@ function buildCard(co, idx) {
   const secStyle = `background:var(--s-${cssKey});color:var(--c-${cssKey});border:1px solid var(--b-${cssKey})`;
   const entryLabel = `Entry: ${co.entryRound}`;
 
+  // Logo: try Logo.dev CDN; on error swap to branded initial
+  const domain = LOGO_DOMAINS[co.name];
+  const fallbackStyle = `background:${color}`;
+  const onErr = `this.style.display='none';`
+    + `this.nextElementSibling.style.display='flex';`
+    + `this.parentElement.style.background='${color}';`
+    + `this.parentElement.style.border='1px solid rgba(0,0,0,.08)';`;
+  const logoHtml = domain
+    ? `<img src="https://img.logo.dev/${domain}?token=${LOGO_TOKEN}&size=80&format=png"
+         width="26" height="26" alt="${co.name}"
+         onerror="${onErr}">
+       <span class="logo-init" style="display:none">${co.name.charAt(0)}</span>`
+    : `<span class="logo-init" style="${fallbackStyle}">${co.name.charAt(0)}</span>`;
+
   return `<div class="company-card" id="card-${idx}" draggable="true"
     ondragstart="dragStart(event,${idx})"
     ondragover="dragOver(event,${idx})"
@@ -506,7 +539,7 @@ function buildCard(co, idx) {
     <div class="card-header" onclick="toggleCard(${idx})">
       <div class="drag-handle" onclick="event.stopPropagation()" title="Drag to reorder">⠿</div>
       <div style="display:flex;align-items:center;gap:12px;min-width:0">
-        <div class="co-logo" style="background:${color}">${co.name.charAt(0)}</div>
+        <div class="co-logo">${logoHtml}</div>
         <div class="co-identity">
           <div class="co-name-row">
             <span class="co-name">${co.name}</span>
