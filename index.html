@@ -326,7 +326,17 @@ const LOGO_DOMAINS = {
   "Databricks":     "databricks.com",
   "Harvey AI":      "harvey.ai",
   "Cognition":      "cognition.ai",
-  "ATOMS":          "atoms.co"
+  "ATOMS":          "atoms.co",
+  "Fireworks AI":   "fireworks.ai",
+  "DriveNets":      "drivenets.com",
+  "Lumilens":       "lumilens.com",
+  "Sila Nanotechnologies": "silanano.com",
+  "Truly Anomaly":  "trueanomaly.space",
+  "CSPEED":         "cspeed.io",
+  "Impulse Space":  "impulsespace.com",
+  "Decart":         "decart.ai",
+  "Aria Networks":  "arianetworks.com",
+  "Mariana Minerals": "marianminerals.com"
 };
 
 const SECTOR_META = {
@@ -337,6 +347,50 @@ const SECTOR_META = {
   infra:  { label: "AI Infra",   cssKey: "inf" },
   rollup: { label: "AI Roll-Up", cssKey: "rup" }
 };
+
+// Lets the spreadsheet's Sector column use plain English ("Defense",
+// "AI Infra") and still land on the right styled tag above.
+const SECTOR_ALIASES = {
+  "ai": "ai", "artificial intelligence": "ai",
+  "def": "def", "defense": "def",
+  "fin": "fin", "fintech": "fin", "finance": "fin",
+  "log": "log", "logistics": "log",
+  "infra": "infra", "ai infra": "infra", "infrastructure": "infra",
+  "rollup": "rollup", "roll-up": "rollup", "ai roll-up": "rollup"
+};
+
+/* ── Dynamic resolution: spreadsheet is the source of truth ──
+   Company/Domain/Sector all come straight off the Excel row. The
+   LOGO_DOMAINS / SECTOR_MAP / LOGO_COLORS objects below only exist
+   to backfill rows added before the Domain/Sector columns did —
+   once every row has those columns filled in, these maps (and this
+   whole block) can be deleted. */
+function resolveDomain(company, domainCol) {
+  if (domainCol) return domainCol.replace(/^https?:\/\//i, '').replace(/\/.*$/, '');
+  return LOGO_DOMAINS[company] || null;
+}
+
+function resolveSector(company, sectorCol) {
+  const raw = (sectorCol || SECTOR_MAP[company] || '').trim();
+  if (raw) {
+    const key = SECTOR_ALIASES[raw.toLowerCase()];
+    if (key) return { key, label: SECTOR_META[key].label };
+    // Sector text that doesn't match a known bucket — show exactly
+    // what was typed, styled neutrally, rather than guessing.
+    return { key: 'other', label: raw };
+  }
+  return { key: 'other', label: 'Unclassified' };
+}
+
+// Deterministic fallback color for the initial-letter avatar when a
+// company isn't in LOGO_COLORS — same company always gets the same
+// color, no maintenance required.
+function hashColor(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  const hue = hash % 360;
+  return `hsl(${hue}, 45%, 28%)`;
+}
 
 /* ══════════════════════════════════════════════════════════════
    DATA LOADING — calls /api/portfolio, gets base64 Excel,
@@ -411,13 +465,16 @@ function showState(state, msg, detail) {
    Converts flat Excel rows into grouped company + round objects.
 
    Excel column layout (row 0 = headers):
-     0:Company | 1:Entry | 2:Month | 3:Year | 4:Series
-     5:Raised  | 6:Valuation | 7:Notes | 8:Business
+     Company | Entry | Month | Year | Series | Raised | Valuation
+     Notes | Business | Domain (optional) | Sector (optional)
 
    Rules:
-   • Company and Business only appear in the FIRST row of each block.
+   • Company/Business/Domain/Sector only appear in the FIRST row of each block.
    • Entry column ">>" marks the round Aureus invested in.
    • Last round per company is flagged isLatest.
+   • Domain/Sector are read straight from the spreadsheet so new
+     companies don't require a code change — see resolveDomain()
+     and resolveSector() below for the fallback chain.
 ══════════════════════════════════════════════════════════════ */
 function parsePortfolio(rows) {
   // rows is now an array of objects keyed by column header name
@@ -438,12 +495,17 @@ function parsePortfolio(rows) {
     const valuation = String(row['Valuation'] || '').trim();
     const notes     = String(row['Notes']     || '').trim();
     const business  = String(row['Business']  || '').trim();
+    const domainCol = String(row['Domain']    || '').trim();
+    const sectorCol = String(row['Sector']    || '').trim();
 
     if (company) {
+      const sec = resolveSector(company, sectorCol);
       current = {
         name:        company,
         business,
-        sector:      SECTOR_MAP[company] || 'ai',
+        domain:      resolveDomain(company, domainCol),
+        sector:      sec.label,   // display text + used for "sort by sector"
+        sectorKey:   sec.key,     // css styling key (ai/def/fin/log/infra/rollup/other)
         entryRound:  null,
         entryVal:    null,
         latestRound: null,
@@ -518,14 +580,18 @@ function buildRoundRow(r) {
 }
 
 function buildCard(co, idx) {
-  const color  = LOGO_COLORS[co.name] || '#1A3060';
-  const sm     = SECTOR_META[co.sector] || SECTOR_META.ai;
-  const cssKey = sm.cssKey;
-  const secStyle = `background:var(--s-${cssKey});color:var(--c-${cssKey});border:1px solid var(--b-${cssKey})`;
+  const color  = LOGO_COLORS[co.name] || hashColor(co.name);
+  const cssKey = co.sectorKey || 'other';
+  const secStyle = (cssKey === 'other')
+    ? `background:var(--surface-3);color:var(--text-2);border:1px solid var(--border-2)`
+    : `background:var(--s-${cssKey});color:var(--c-${cssKey});border:1px solid var(--b-${cssKey})`;
   const entryLabel = `Entry: ${co.entryRound}`;
 
-  // Logo: try Logo.dev CDN; on error swap to branded initial
-  const domain = LOGO_DOMAINS[co.name];
+  // Logo: try Logo.dev CDN; on error swap to branded initial.
+  // co.domain comes straight from the spreadsheet (Domain column) so
+  // new companies just work — LOGO_DOMAINS below is only a bridge for
+  // rows added before that column existed.
+  const domain = co.domain;
   const fallbackStyle = `background:${color}`;
   const onErr = `this.style.display='none';`
     + `this.nextElementSibling.style.display='flex';`
