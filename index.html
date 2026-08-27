@@ -182,6 +182,74 @@ main{max-width:1280px;margin:0 auto;padding:16px 36px 80px;}
 .leg-swatch.green{background:var(--latest-c);border:1px solid var(--latest-bd);}
 .leg-swatch.gray{background:var(--text-3);}
 .foot-hint{margin-left:auto;font-size:10px;color:var(--text-4);}
+
+/* ══════════════════════════════════════════════════════════════
+   MOBILE (≤680px)
+   The desktop layout above packs name/rounds/valuation/sector/
+   chevron into single non-wrapping rows with fixed pixel widths —
+   fine on a wide screen, but on a phone those rows overlap instead
+   of shrinking. Below, the same header/card/round markup is
+   restacked into a narrow-screen layout instead.
+══════════════════════════════════════════════════════════════ */
+@media (max-width: 680px) {
+  header{flex-wrap:wrap;height:auto;padding:10px 14px;row-gap:8px;position:static;}
+  .header-brand{flex-wrap:wrap;row-gap:4px;}
+  .header-rule{display:none;}
+  .header-subtitle{width:100%;}
+  .header-right{width:100%;justify-content:space-between;gap:8px;}
+  .hdr-divider{display:none;}
+
+  .toolbar{padding:14px 14px 0;flex-wrap:wrap;row-gap:10px;}
+  .sort-group{flex-wrap:wrap;row-gap:6px;}
+  .drag-hint{display:none!important;}
+
+  main{padding:12px 12px 60px;}
+
+  /* Card header: stack logo+name above the metrics row instead of
+     squeezing both into one line */
+  .card-header{display:flex;flex-direction:column;align-items:stretch;gap:10px;padding:12px;}
+  .drag-handle{display:none;} /* touch drag isn't reliable; Custom Order is still readable, just not reorderable here */
+  .co-name-row{flex-wrap:wrap;row-gap:6px;}
+  .co-name{white-space:normal;}
+  .co-meta{width:100%;justify-content:flex-start;flex-wrap:wrap;gap:10px 18px;}
+  .meta-block{text-align:left;}
+  .chevron{margin-left:auto;}
+
+  /* Rounds table: the 5-column fixed-width grid doesn't fit a phone
+     screen, so drop the header row and lay out each round as a
+     labeled 2-column card instead */
+  .table-head{display:none;}
+  .round-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    grid-template-areas:"date series" "raised val" "inv inv";
+    padding:12px 14px;
+    gap:10px 14px;
+  }
+  .round-row.is-entry,
+  .round-row.is-latest:not(.is-entry){padding-left:11px;}
+  .c-date{grid-area:date;}
+  .c-series{grid-area:series;}
+  .c-raised{grid-area:raised;text-align:left;}
+  .c-val{grid-area:val;text-align:left;}
+  .c-inv{grid-area:inv;}
+  .round-row [data-label]::before{
+    content:attr(data-label);
+    display:block;
+    font-size:8px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--text-3);
+    margin-bottom:3px;
+  }
+
+  .info-popover{left:16px!important;right:16px;width:auto!important;}
+
+  .dash-footer{flex-wrap:wrap;row-gap:8px;}
+  .foot-hint{margin-left:0;width:100%;}
+}
+
 </style>
 </head>
 <body>
@@ -571,11 +639,11 @@ function buildRoundRow(r) {
   if (r.isLatest) badges.push('<span class="rb rb-latest">Latest</span>');
 
   return `<div class="${cls}">
-    <div class="c-date">${r.date || '—'}</div>
-    <div class="c-series">${r.series}${badges.length ? `<div class="round-badges">${badges.join('')}</div>` : ''}</div>
-    <div class="c-raised">${r.raised || '<span class="empty-cell">—</span>'}</div>
-    <div class="c-val${!r.val ? ' empty' : ''}">${r.val || '—'}</div>
-    <div class="c-inv">${r.inv || '<span class="empty-cell">—</span>'}</div>
+    <div class="c-date" data-label="Date">${r.date || '—'}</div>
+    <div class="c-series" data-label="Round">${r.series}${badges.length ? `<div class="round-badges">${badges.join('')}</div>` : ''}</div>
+    <div class="c-raised" data-label="Raised">${r.raised || '<span class="empty-cell">—</span>'}</div>
+    <div class="c-val${!r.val ? ' empty' : ''}" data-label="Valuation">${r.val || '—'}</div>
+    <div class="c-inv" data-label="Key Investors">${r.inv || '<span class="empty-cell">—</span>'}</div>
   </div>`;
 }
 
