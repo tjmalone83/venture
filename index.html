@@ -648,11 +648,15 @@ function buildRoundRow(r) {
 }
 
 function buildCard(co, idx) {
-  const color  = LOGO_COLORS[co.name] || hashColor(co.name);
-  const cssKey = co.sectorKey || 'other';
-  const secStyle = (cssKey === 'other')
-    ? `background:var(--surface-3);color:var(--text-2);border:1px solid var(--border-2)`
-    : `background:var(--s-${cssKey});color:var(--c-${cssKey});border:1px solid var(--b-${cssKey})`;
+  const color   = LOGO_COLORS[co.name] || hashColor(co.name);
+  // co.sectorKey is one of ai/def/fin/log/infra/rollup/other — but the
+  // actual CSS custom properties use SECTOR_META's shortened suffix
+  // (infra → inf, rollup → rup), so look that up rather than using
+  // co.sectorKey directly as the variable name.
+  const sectorMeta = SECTOR_META[co.sectorKey];
+  const secStyle = sectorMeta
+    ? `background:var(--s-${sectorMeta.cssKey});color:var(--c-${sectorMeta.cssKey});border:1px solid var(--b-${sectorMeta.cssKey})`
+    : `background:var(--surface-3);color:var(--text-2);border:1px solid var(--border-2)`;
   const entryLabel = `Entry: ${co.entryRound}`;
 
   // Logo: try Logo.dev CDN; on error swap to branded initial.
